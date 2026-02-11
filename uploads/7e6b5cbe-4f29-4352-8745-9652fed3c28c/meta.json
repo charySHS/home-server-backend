@@ -1,9 +1,0 @@
-{
-  "uploadId": "7e6b5cbe-4f29-4352-8745-9652fed3c28c",
-  "fileId": "ios-test-file",
-  "fileName": "ios-test.bin",
-  "fileSize": 300,
-  "chunkSize": 100,
-  "totalChunks": 3,
-  "createdAt": 1770781160893
-}
