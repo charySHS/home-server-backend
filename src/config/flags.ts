@@ -1,0 +1,1 @@
+export const ADMIN_DEBUG_LOGS = process.env.ADMIN_DEBUG_LOGS === "true";
