@@ -89,11 +89,18 @@ export class UploadDiskStore {
      * This file is the authoritative source of progress.
      */
     async writeState(uploadId: string, state: UploadStateFile): Promise<void> {
+        const statePath = this.getStatePath(uploadId);
+        const tempPath = `${statePath}.tmp`;
+
+        // First, write to temporary file.
         await fs.writeFile(
-            this.getStatePath(uploadId),
+            tempPath,
             JSON.stringify(state, null, 2),
             "utf-8"
         );
+
+        // Atomic rename into place
+        await fs.rename(tempPath, statePath);
     }
 
     /**

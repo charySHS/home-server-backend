@@ -6,13 +6,16 @@ import { STORAGE_CONFIG } from "../../../config/storage.js";
 const STORAGE_DIR = STORAGE_CONFIG.dataDir;
 
 export function registerDownloadRoute(app: FastifyInstance) {
-    app.get("/api/v1/files/:fileName", async (req, reply) => {
-        const { fileName } = req.params as { fileName: string };
+    app.get("/api/v1/files/*", async (req, reply) => {
+        // 1. Strip directory components
+        const rawPath = (req.params as any)["*"] as string;
 
-        const filePath = path.join(STORAGE_DIR, fileName);
+        // 2. Resolve final path safety
+        const resolvedBase = path.resolve(STORAGE_DIR);
+        const filePath = path.join(STORAGE_DIR, rawPath);
 
         // 🔒 Prevent path traversal
-        if (!filePath.startsWith(STORAGE_DIR)) {
+        if (!filePath.startsWith(resolvedBase + path.sep)) {
             return reply.code(400).send({ error: "INVALID_FILE_PATH" });
         }
 
@@ -51,7 +54,7 @@ export function registerDownloadRoute(app: FastifyInstance) {
                 "Accept-Ranges": "bytes",
                 "Content-Length": chunkSize,
                 "Content-Type": "application/octet-stream",
-                "Content-Disposition": `attachment; filename="${fileName}"`,
+                "Content-Disposition": `attachment; filename="${path.basename(filePath).replace(/"/g, "")}"`,
             });
 
             return reply.send(stream);
@@ -65,7 +68,7 @@ export function registerDownloadRoute(app: FastifyInstance) {
             "Content-Length": stat.size,
             "Content-Type": "application/octet-stream",
             "Accept-Ranges": "bytes",
-            "Content-Disposition": `attachment; filename="${fileName}"`,
+            "Content-Disposition": `attachment; filename="${path.basename(filePath).replace(/"/g, "")}"`,
         });
 
         return reply.send(fs.createReadStream(filePath));
