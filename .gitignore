@@ -3,6 +3,7 @@ node_modules/
 dist/
 .env
 .env.local
+.env.*.local
 
 # Logs
 logs/
@@ -18,3 +19,10 @@ Thumbs.db
 
 # Runtime storage (IMPORTANT)
 D:/HomeServer/
+
+# Database
+server.db
+*.db
+
+# Server Identity
+server.secret
