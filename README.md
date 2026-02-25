@@ -176,4 +176,4 @@ Device-bound authentication active
 Future work will focus on polish, isolation, and optional remote security controls.
 
 Copyright © 2026 Zach Hyland. All rights reserved.
-No license is granted to use, copy, modify, or distribute this code without explicit permission.
+This repository is made public for review purposes only. No license is granted to use, copy, modify, or distribute this code without explicit permission.
