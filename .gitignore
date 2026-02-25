@@ -1,6 +1,10 @@
 # Node
 node_modules/
 dist/
+
+# Environment
+.env*
+!.env.example
 .env
 .env.local
 .env.*.local
@@ -26,3 +30,9 @@ server.db
 
 # Server Identity
 server.secret
+
+# Coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
