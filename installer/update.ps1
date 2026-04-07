@@ -1,7 +1,7 @@
 #Requires -RunAsAdministrator
 <#
 .SYNOPSIS
-    Home Server updater — reinstalls dependencies, rebuilds TypeScript,
+    Home Server updater - reinstalls dependencies, rebuilds TypeScript,
     updates the startup task, and restarts the server.
     Configuration (.env) and stored files are untouched.
 .EXAMPLE
@@ -37,7 +37,7 @@ if ($conn) {
     Stop-Process -Id $pid_ -Force -ErrorAction SilentlyContinue
     Write-OK "Stopped process on port 3000 (PID $pid_)"
 } else {
-    Write-Warn 'No process found on port 3000 — server may already be stopped.'
+    Write-Warn 'No process found on port 3000 - server may already be stopped.'
 }
 
 # Kill any lingering wscript launcher

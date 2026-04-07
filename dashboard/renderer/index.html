@@ -163,6 +163,28 @@
 
       <!-- ── Devices ── -->
       <div id="tab-devices" class="tab-panel">
+
+        <!-- Pending pairing requests — hidden when empty -->
+        <div id="pairs-section" class="section hidden" style="border-color: rgba(74,143,245,0.35); background: rgba(74,143,245,0.05);">
+          <div class="section-header">
+            <h3 style="color: var(--accent)">Pairing Requests</h3>
+            <span class="count-badge" id="pairs-badge" style="background:var(--accent); color:#fff">0</span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:18%">Code</th>
+                <th style="width:24%">Device</th>
+                <th style="width:18%">User</th>
+                <th style="width:16%">Expires</th>
+                <th style="width:24%">Action</th>
+              </tr>
+            </thead>
+            <tbody id="pairs-tbody">
+            </tbody>
+          </table>
+        </div>
+
         <div class="section">
           <div class="section-header">
             <h3>All Devices</h3>

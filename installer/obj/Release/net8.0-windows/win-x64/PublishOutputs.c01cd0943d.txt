@@ -1,0 +1,2 @@
+C:\dev\home-server\installer\bin\Release\net8.0-windows\win-x64\publish\HomeServerSetup.pdb
+C:\dev\home-server\installer\bin\Release\net8.0-windows\win-x64\publish\HomeServerSetup.exe

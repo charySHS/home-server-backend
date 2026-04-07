@@ -5,6 +5,7 @@ import { registerSetupRoute } from "./api/v1/auth/setup.js";
 import { registerSetupPageRoute } from "./api/v1/auth/setup-page.js";
 import { registerLoginRoute } from "./api/v1/auth/login.js";
 import { registerRefreshRoute } from "./api/v1/auth/refresh.js";
+import { registerPairRoutes } from "./api/v1/auth/pair.js";
 import { registerInitUpload } from "./api/v1/uploads/init.js";
 import { registerChunkUpload } from "./api/v1/uploads/chunk.js";
 import { registerUploadStatus } from "./api/v1/uploads/status.js";
@@ -43,6 +44,15 @@ const PUBLIC_ROUTES = new Set([
     "/setup",
 ]);
 
+// Pairing poll endpoints are public (iOS needs to reach them before it has a token).
+// Admin pair management (/api/v1/admin/pairs/...) goes through normal auth.
+function isPairingPublic(url: string): boolean {
+    const path = url.split("?")[0];
+    if (path === "/api/v1/auth/pair") return true;
+    if (path.startsWith("/api/v1/auth/pair/")) return true;
+    return false;
+}
+
 async function createApp() {
     const app = Fastify({ logger: true });
 
@@ -57,6 +67,7 @@ async function createApp() {
         // Strip query string before checking — req.url includes it (e.g. /health?foo=1)
         const path = req.url.split("?")[0];
         if (PUBLIC_ROUTES.has(path)) return;
+        if (isPairingPublic(req.url)) return;
         await authMiddleware(req, reply);
     });
 
@@ -67,6 +78,7 @@ async function createApp() {
     await registerSetupRoute(app);
     await registerLoginRoute(app);
     await registerRefreshRoute(app);
+    await registerPairRoutes(app);
 
     // Uploads
     await registerInitUpload(app, uploadManager);

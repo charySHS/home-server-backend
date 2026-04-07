@@ -893,6 +893,20 @@ html, body {
 .btn-restart  { background: rgba(240,164,41,0.15); color: var(--warning); border: 1px solid rgba(240,164,41,0.3); }
 .btn-shutdown { background: rgba(232,64,64,0.12);  color: var(--danger);  border: 1px solid rgba(232,64,64,0.28); }
 
+.pair-code {
+  font-family: Consolas, monospace;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--accent);
+}
+
+.pair-timer {
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .btn-row {
   padding: 3px 10px;
   border-radius: var(--radius-sm);

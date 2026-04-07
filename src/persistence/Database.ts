@@ -30,5 +30,17 @@ export function initDatabase() {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS pairing_requests (
+      id          TEXT PRIMARY KEY,
+      user_id     TEXT NOT NULL,
+      device_name TEXT NOT NULL,
+      code        TEXT NOT NULL,
+      status      TEXT NOT NULL DEFAULT 'pending',
+      device_id   TEXT,
+      created_at  INTEGER NOT NULL,
+      expires_at  INTEGER NOT NULL,
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    );
   `);
 }

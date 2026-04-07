@@ -2,9 +2,20 @@
 <#
 .SYNOPSIS
     Home Server installer for Windows.
+.PARAMETER StorageDir
+    Storage path. When provided (e.g. by the GUI installer) the interactive
+    prompt is skipped.
+.PARAMETER SkipAdminPrompt
+    Skip the admin-account creation prompt. The user creates their account
+    via the web setup page at http://localhost:3000/setup.
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File "C:\path\to\installer\install.ps1"
+    powershell -ExecutionPolicy Bypass -File "...\install.ps1" -StorageDir "D:\data" -SkipAdminPrompt
 #>
+param(
+    [string]$StorageDir     = "",
+    [switch]$SkipAdminPrompt
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -67,11 +78,15 @@ try {
 Write-Step 'Storage location'
 
 $defaultStorage = 'D:\server-storage'
-Write-Host '    Where should your files be stored?' -ForegroundColor Yellow
-Write-Host ('    Press Enter to use the default: ' + $defaultStorage)
-$storageInput = Read-Host '    Storage path'
 
-$StorageDir = if ($storageInput.Trim() -eq '') { $defaultStorage } else { $storageInput.Trim() }
+if ($StorageDir.Trim() -eq '') {
+    # Interactive mode: ask the user
+    Write-Host '    Where should your files be stored?' -ForegroundColor Yellow
+    Write-Host ('    Press Enter to use the default: ' + $defaultStorage)
+    $storageInput = Read-Host '    Storage path'
+    $StorageDir = if ($storageInput.Trim() -eq '') { $defaultStorage } else { $storageInput.Trim() }
+}
+# else: StorageDir was passed by the GUI installer - use it as-is
 
 foreach ($dir in @($StorageDir, ($StorageDir + '\data'), ($StorageDir + '\uploads'))) {
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
@@ -211,19 +226,22 @@ Write-OK 'Server is up on port 3000'
 
 Write-Step 'Creating admin account'
 
-try {
-    Invoke-RestMethod -Uri 'http://localhost:3000/api/v1/auth/setup' `
-        -Method POST -ContentType 'application/json' `
-        -Body '{"username":"__probe__","password":"__probe__"}' `
-        -ErrorAction Stop | Out-Null
-    $setupStatus = 200
-} catch {
-    $setupStatus = $_.Exception.Response.StatusCode.value__
-}
-
-if ($setupStatus -eq 403) {
-    Write-Warn 'Admin account already exists -- skipping.'
+if ($SkipAdminPrompt) {
+    Write-Warn 'Skipping admin setup (GUI mode). Visit http://localhost:3000/setup to create your account.'
 } else {
+    try {
+        Invoke-RestMethod -Uri 'http://localhost:3000/api/v1/auth/setup' `
+            -Method POST -ContentType 'application/json' `
+            -Body '{"username":"__probe__","password":"__probe__"}' `
+            -ErrorAction Stop | Out-Null
+        $setupStatus = 200
+    } catch {
+        $setupStatus = $_.Exception.Response.StatusCode.value__
+    }
+
+    if ($setupStatus -eq 403) {
+        Write-Warn 'Admin account already exists -- skipping.'
+    } else {
     Write-Host '    Choose a username and password for your admin account.' -ForegroundColor Yellow
     $AdminUser       = Read-Host '    Username'
     $AdminPassSecure = Read-Host '    Password' -AsSecureString
@@ -244,6 +262,7 @@ if ($setupStatus -eq 403) {
             Write-Warn 'Visit http://localhost:3000/setup in your browser to finish.'
         }
     }
+  } # end non-skip block
 }
 
 # --- Done ---

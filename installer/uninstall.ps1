@@ -97,7 +97,7 @@ if ((Test-Path $envPath) -and -not $Silent) {
         Write-Warn ".env kept"
     }
 } elseif ($Silent) {
-    Write-Warn ".env kept (silent mode — remove manually if needed)"
+    Write-Warn ".env kept (silent mode - remove manually if needed)"
 }
 
 # --- Optional: remove storage data -------------------------------------------
@@ -115,7 +115,7 @@ if ((Test-Path $storageDir) -and -not $Silent) {
         Write-Warn "Storage kept at $storageDir"
     }
 } elseif ($Silent) {
-    Write-Warn "Storage kept at $storageDir (silent mode — remove manually if needed)"
+    Write-Warn "Storage kept at $storageDir (silent mode - remove manually if needed)"
 } else {
     Write-Warn "Storage directory not found at $storageDir"
 }

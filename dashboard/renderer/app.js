@@ -33,6 +33,9 @@ const api = {
     }),
     refresh:        ()         => apiFetch('/api/v1/auth/refresh', { method: 'POST' }),
     setApproval:    (id, val)  => apiFetch(`/api/v1/admin/devices/${id}`, { method: 'PATCH', body: JSON.stringify({ approved: val }) }),
+    pairs:          ()         => apiFetch('/api/v1/admin/pairs'),
+    approvePair:    (id)       => apiFetch(`/api/v1/admin/pairs/${id}/approve`, { method: 'POST' }),
+    denyPair:       (id)       => apiFetch(`/api/v1/admin/pairs/${id}/deny`,    { method: 'POST' }),
     settings:       ()         => apiFetch('/api/v1/admin/settings'),
     updateSettings: (body)     => apiFetch('/api/v1/admin/settings', { method: 'PATCH', body: JSON.stringify(body) }),
     updateAccount:  (body)     => apiFetch('/api/v1/admin/account',  { method: 'PATCH', body: JSON.stringify(body) }),
@@ -406,15 +409,17 @@ async function refreshAll() {
     const tab = state.currentTab;
 
     try {
-        const [statsData, devicesData, filesData] = await Promise.allSettled([
+        const [statsData, devicesData, filesData, pairsData] = await Promise.allSettled([
             api.stats(),
             api.devices(),
             api.files(),
+            api.pairs(),
         ]);
 
-        if (statsData.status === 'fulfilled') renderStats(statsData.value);
+        if (statsData.status === 'fulfilled')   renderStats(statsData.value);
         if (devicesData.status === 'fulfilled') renderDevices(devicesData.value.devices);
-        if (filesData.status === 'fulfilled') renderFiles(filesData.value.files);
+        if (filesData.status === 'fulfilled')   renderFiles(filesData.value.files);
+        if (pairsData.status === 'fulfilled')   renderPairs(pairsData.value.pairs);
 
         // If token expired mid-session, trigger re-login
     } catch (err) {
@@ -631,6 +636,65 @@ async function saveOptions() {
         btn.disabled    = false;
         btn.textContent = 'Save Options';
     }
+}
+
+/* ── Pairing requests ────────────────────────────────────────────────────────── */
+
+function renderPairs(pairs) {
+    const container = el('pairs-section');
+    const badge     = el('pairs-badge');
+    if (!container) return;
+
+    if (!pairs || pairs.length === 0) {
+        container.classList.add('hidden');
+        if (badge) badge.classList.add('hidden');
+        return;
+    }
+
+    container.classList.remove('hidden');
+    if (badge) {
+        badge.textContent = pairs.length;
+        badge.classList.remove('hidden');
+    }
+
+    const tbody = el('pairs-tbody');
+    if (!tbody) return;
+
+    const now = Date.now();
+
+    tbody.innerHTML = pairs.map(p => {
+        const secsLeft = Math.max(0, Math.round((p.expiresAt - now) / 1000));
+        const mmss     = `${Math.floor(secsLeft / 60)}:${String(secsLeft % 60).padStart(2, '0')}`;
+        return `
+          <tr>
+            <td class="wide" style="max-width:none">
+              <span class="pair-code">${escHtml(p.code)}</span>
+            </td>
+            <td>${escHtml(p.deviceName)}</td>
+            <td>${escHtml(p.username)}</td>
+            <td class="pair-timer">${mmss}</td>
+            <td>
+              <button class="btn-row btn-approve" data-pair-id="${escHtml(p.id)}" data-action="approve">Approve</button>
+              <button class="btn-row btn-block"   data-pair-id="${escHtml(p.id)}" data-action="deny"    style="margin-left:6px">Deny</button>
+            </td>
+          </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll('button[data-pair-id]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id     = btn.dataset.pairId;
+            const action = btn.dataset.action;
+            btn.disabled = true;
+            try {
+                if (action === 'approve') await api.approvePair(id);
+                else                      await api.denyPair(id);
+                await refreshAll();
+            } catch (err) {
+                alert(`Failed: ${err.message}`);
+                btn.disabled = false;
+            }
+        });
+    });
 }
 
 /* ── Polling ────────────────────────────────────────────────────────────────── */
