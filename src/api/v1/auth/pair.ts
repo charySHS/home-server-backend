@@ -7,6 +7,7 @@ import argon2 from "argon2";
 import { db } from "../../../persistence/Database.js";
 import { getServerSecret } from "../../../security/ServerIdentity.js";
 import { STORAGE_CONFIG } from "../../../config/storage.js";
+import { logger } from "../../../logger/Logger.js";
 
 const PAIRING_TTL_MS  = 5 * 60 * 1000;   // codes expire after 5 minutes
 const POLL_MAX_AGE_MS = 6 * 60 * 1000;   // polling window (slightly longer)
@@ -51,7 +52,8 @@ export async function registerPairRoutes(app: FastifyInstance) {
                 INSERT INTO users (id, username, password_hash, created_at, is_admin)
                 VALUES (?, ?, ?, ?, 0)
             `).run(newUserId, username.trim(), placeholderHash, Date.now());
-            await fs.mkdir(path.join(STORAGE_CONFIG.dataDir, newUserId), { recursive: true });
+            await fs.mkdir(path.join(STORAGE_CONFIG.dataDir, username.trim()), { recursive: true });
+            logger.info("user_registered", { username: username.trim(), userId: newUserId });
             user = { id: newUserId };
         }
 
@@ -95,8 +97,9 @@ export async function registerPairRoutes(app: FastifyInstance) {
 
         if (row.status === "approved" && row.device_id) {
             const expiresIn = (process.env.JWT_EXPIRATION || "7d") as any;
+            const u = db.prepare("SELECT username FROM users WHERE id = ?").get(row.user_id) as { username: string } | undefined;
             const token = jwt.sign(
-                { userId: row.user_id, deviceId: row.device_id },
+                { userId: row.user_id, username: u?.username, deviceId: row.device_id },
                 getServerSecret(),
                 { expiresIn }
             );
@@ -168,7 +171,9 @@ export async function registerPairRoutes(app: FastifyInstance) {
             UPDATE pairing_requests SET status = 'approved', device_id = ? WHERE id = ?
         `).run(deviceId, id);
 
-        await fs.mkdir(path.join(STORAGE_CONFIG.dataDir, row.user_id), { recursive: true });
+        const u = db.prepare("SELECT username FROM users WHERE id = ?").get(row.user_id) as { username: string } | undefined;
+        await fs.mkdir(path.join(STORAGE_CONFIG.dataDir, u?.username ?? row.user_id), { recursive: true });
+        logger.info("device_approved", { username: u?.username ?? row.user_id, device: row.device_name, deviceId });
 
         return { ok: true };
     });
@@ -183,6 +188,12 @@ export async function registerPairRoutes(app: FastifyInstance) {
 
         if (result.changes === 0) {
             return reply.code(404).send({ error: "PAIRING_NOT_FOUND" });
+        }
+
+        const denied = db.prepare("SELECT user_id, device_name FROM pairing_requests WHERE id = ?").get(id) as { user_id: string; device_name: string } | undefined;
+        if (denied) {
+            const u = db.prepare("SELECT username FROM users WHERE id = ?").get(denied.user_id) as { username: string } | undefined;
+            logger.info("device_denied", { username: u?.username ?? denied.user_id, device: denied.device_name });
         }
 
         return { ok: true };

@@ -26,12 +26,14 @@ import { authMiddleware } from "./middleware/Auth.js";
 import { UploadManager } from "./domain/upload/UploadManager.js";
 import { ADMIN_DEBUG_LOGS } from "./config/flags.js";
 import { STORAGE_CONFIG } from "./config/storage.js";
+import { logger } from "./logger/Logger.js";
 import fs from "fs";
 
 [
     STORAGE_CONFIG.baseDir,
     STORAGE_CONFIG.dataDir,
     STORAGE_CONFIG.uploadsDir,
+    STORAGE_CONFIG.logsDir,
 ].forEach(dir => {
     if (!fs.existsSync(dir)) { fs.mkdirSync(dir, { recursive: true }); }
 });
@@ -106,8 +108,9 @@ async function createApp() {
     await registerAdminAccountRoute(app);
     await registerAdminPowerRoute(app);
 
-    app.setErrorHandler((error, _request, reply) => {
+    app.setErrorHandler((error, request, reply) => {
         const err = error as Error;
+        logger.error("server_error", { method: request.method, url: request.url, message: err.message });
         if (ADMIN_DEBUG_LOGS()) {
             console.error("FASTIFY ERROR", err);
             return reply.status(500).send({

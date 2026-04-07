@@ -15,12 +15,12 @@ export async function registerInitUpload(
     uploadManager: UploadManager
 ) {
     app.post("/api/v1/uploads/init", async (req, reply) => {
-        const body   = InitSchema.parse(req.body);
-        const userId = (req as any).user?.userId as string | undefined;
+        const body     = InitSchema.parse(req.body);
+        const username = (req as any).user?.username as string | undefined;
 
-        if (!userId) return reply.code(401).send({ error: "UNAUTHORIZED" });
+        if (!username) return reply.code(401).send({ error: "UNAUTHORIZED" });
 
-        const session = await uploadManager.initUpload({ ...body, userId });
+        const session = await uploadManager.initUpload({ ...body, username });
 
         const missingChunks: number[] = [];
 

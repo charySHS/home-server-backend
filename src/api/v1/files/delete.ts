@@ -2,16 +2,17 @@ import { FastifyInstance } from "fastify";
 import { promises as fs } from "fs";
 import path from "path";
 import { STORAGE_CONFIG } from "../../../config/storage.js";
+import { logger } from "../../../logger/Logger.js";
 
 export async function registerFileDeleteRoute(app: FastifyInstance) {
     app.delete("/api/v1/files/*", async (req, reply) => {
-        const { userId, role } = (req as any).user as { userId: string; role?: string };
+        const { username, role } = (req as any).user as { username: string; role?: string };
         const rawPath = (req.params as any)["*"] as string;
 
         // Dashboard can delete any file; devices are scoped to their own folder
         const scopeRoot = role === "dashboard"
             ? path.resolve(STORAGE_CONFIG.dataDir)
-            : path.resolve(STORAGE_CONFIG.dataDir, userId);
+            : path.resolve(STORAGE_CONFIG.dataDir, username);
 
         const filePath = path.resolve(scopeRoot, rawPath);
 
@@ -21,6 +22,7 @@ export async function registerFileDeleteRoute(app: FastifyInstance) {
 
         try {
             await fs.unlink(filePath);
+            logger.info("file_deleted", { username, file: rawPath });
             return { status: "DELETED" };
         } catch (err: any) {
             if (err.code === "ENOENT") return reply.code(404).send({ error: "FILE_NOT_FOUND" });

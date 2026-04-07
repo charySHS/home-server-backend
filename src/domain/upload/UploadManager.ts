@@ -11,6 +11,7 @@ import {randomUUID} from "node:crypto";
 import {STORAGE_CONFIG} from "../../config/storage.js";
 import { AsyncMutex } from "../../utils/AsyncMutex.js";
 import { statsCollector } from "../../stats/StatsCollector.js";
+import { logger } from "../../logger/Logger.js";
 
 export interface UploadInitRequest {
     fileId: string;
@@ -18,7 +19,7 @@ export interface UploadInitRequest {
     fileSize: number;
     chunkSize: number;
     totalChunks: number;
-    userId: string;
+    username: string;
 }
 
 export interface UploadStatus {
@@ -59,7 +60,7 @@ export class UploadManager {
 
                 // 2. Check resume compatibility — must match userId too
                 const isSameFile =
-                    meta.userId      === request.userId &&
+                    meta.userId      === request.username &&
                     meta.fileId      === request.fileId &&
                     meta.fileSize    === request.fileSize &&
                     meta.chunkSize   === request.chunkSize &&
@@ -77,7 +78,7 @@ export class UploadManager {
                 return {
                     uploadId,
                     fileId:        meta.fileId,
-                    userId:        meta.userId,
+                    username:      meta.userId,
                     fileName:      meta.fileName,
                     fileSize:      meta.fileSize,
                     chunkSize:     meta.chunkSize,
@@ -96,7 +97,7 @@ export class UploadManager {
         const session: UploadSession = {
             uploadId,
             fileId:        request.fileId,
-            userId:        request.userId,
+            username:      request.username,
             fileName:      request.fileName,
             fileSize:      request.fileSize,
             chunkSize:     request.chunkSize,
@@ -200,13 +201,13 @@ export class UploadManager {
             const metaRaw = await fs.readFile(path.join(uploadDir, "meta.json"), "utf-8");
 
             const meta = JSON.parse(metaRaw) as {
-                userId:      string;
+                userId:      string;   // stored as username
                 fileName:    string;
                 fileSize:    number;
                 totalChunks: number;
             };
 
-            // Files live in dataDir/{userId}/{fileName}
+            // Files live in dataDir/{username}/{fileName}
             // fileName may include subdirectory path (e.g. "photos/vacation.jpg")
             const userDir     = path.join(STORAGE_CONFIG.dataDir, meta.userId);
             const finalPath   = path.resolve(userDir, meta.fileName);
@@ -247,6 +248,7 @@ export class UploadManager {
 
             // Track bytes uploaded for stats
             statsCollector.trackUpload(meta.fileSize);
+            logger.info("file_uploaded", { username: meta.userId, file: meta.fileName, bytes: meta.fileSize });
 
             state.state = UploadState.COMPLETED;
             state.lastActivity = Date.now();

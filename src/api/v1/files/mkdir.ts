@@ -5,14 +5,14 @@ import { STORAGE_CONFIG } from "../../../config/storage.js";
 
 export async function registerFileMkdirRoute(app: FastifyInstance) {
     app.post("/api/v1/files/mkdir", async (req, reply) => {
-        const { userId } = (req as any).user as { userId: string };
+        const { username } = (req as any).user as { username: string };
         const { path: subPath } = req.body as { path: string };
 
         if (!subPath || typeof subPath !== "string") {
             return reply.code(400).send({ error: "PATH_REQUIRED" });
         }
 
-        const userRoot = path.resolve(STORAGE_CONFIG.dataDir, userId);
+        const userRoot = path.resolve(STORAGE_CONFIG.dataDir, username);
         const target   = path.resolve(userRoot, subPath);
 
         // Ensure the new directory stays within the user's own folder

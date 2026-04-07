@@ -17,7 +17,7 @@ export async function registerLoginRoute(app: FastifyInstance) {
 
         const user = db
             .prepare("SELECT * FROM users WHERE username = ?")
-            .get(username) as { id: string; password_hash: string } | undefined;
+            .get(username) as { id: string; username: string; password_hash: string } | undefined;
 
         if (!user) {
             return reply.code(401).send({ error: "INVALID_CREDENTIALS" });
@@ -34,7 +34,7 @@ export async function registerLoginRoute(app: FastifyInstance) {
         // Dashboard is a monitor/viewport — it doesn't register as a device.
         if (isDashboard) {
             const token = jwt.sign(
-                { userId: user.id, role: "dashboard" },
+                { userId: user.id, username: user.username, role: "dashboard" },
                 getServerSecret(),
                 { expiresIn }
             );
@@ -76,7 +76,7 @@ export async function registerLoginRoute(app: FastifyInstance) {
         }
 
         const token = jwt.sign(
-            { userId: user.id, deviceId: finalDeviceId },
+            { userId: user.id, username: user.username, deviceId: finalDeviceId },
             getServerSecret(),
             { expiresIn }
         );

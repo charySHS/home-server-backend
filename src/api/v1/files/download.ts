@@ -32,13 +32,13 @@ function getMimeType(filePath: string): string {
 
 export function registerDownloadRoute(app: FastifyInstance) {
     app.get("/api/v1/files/*", async (req, reply) => {
-        const { userId, role } = (req as any).user as { userId: string; role?: string };
+        const { username, role } = (req as any).user as { username: string; role?: string };
         const rawPath = (req.params as any)["*"] as string;
 
         // Dashboard can access any file; devices are scoped to their own folder
         const scopeRoot = role === "dashboard"
             ? path.resolve(STORAGE_CONFIG.dataDir)
-            : path.resolve(STORAGE_CONFIG.dataDir, userId);
+            : path.resolve(STORAGE_CONFIG.dataDir, username);
 
         const filePath = path.resolve(scopeRoot, rawPath);
 

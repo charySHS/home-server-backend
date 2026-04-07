@@ -33,7 +33,7 @@ async function listRecursive(dir: string, base: string): Promise<FileEntry[]> {
 
 export async function registerFileListRoute(app: FastifyInstance) {
     app.get("/api/v1/files", async (req, _reply) => {
-        const { userId, role } = (req as any).user as { userId: string; role?: string };
+        const { username, role } = (req as any).user as { username: string; role?: string };
 
         if (role === "dashboard") {
             // Admin sees all files under all user folders, prefixed with userId
@@ -57,7 +57,7 @@ export async function registerFileListRoute(app: FastifyInstance) {
         }
 
         // Device: scoped to the user's own folder
-        const userDir = path.join(STORAGE_CONFIG.dataDir, userId);
+        const userDir = path.join(STORAGE_CONFIG.dataDir, username);
         const files   = await listRecursive(userDir, "");
         return { files };
     });
