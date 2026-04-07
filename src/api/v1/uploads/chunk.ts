@@ -7,19 +7,19 @@ export async function registerChunkUpload(
     uploadManager: UploadManager
 ) {
     app.post("/api/v1/uploads/chunk", async (req) => {
-        if (ADMIN_DEBUG_LOGS) console.log("-> /uploads/chunk hit");
+        if (ADMIN_DEBUG_LOGS()) console.log("-> /uploads/chunk hit");
 
         const uploadId = req.headers["x-upload-id"] as string;
         const chunkIndex = Number(req.headers["x-chunk-index"]);
 
-        if (ADMIN_DEBUG_LOGS) console.log("headers:", { uploadId, chunkIndex });
+        if (ADMIN_DEBUG_LOGS()) console.log("headers:", { uploadId, chunkIndex });
 
         if (!uploadId || Number.isNaN(chunkIndex)) { throw new Error("MISSING_HEADERS"); }
 
-        if (ADMIN_DEBUG_LOGS) console.log("about to iterate parts");
+        if (ADMIN_DEBUG_LOGS()) console.log("about to iterate parts");
 
         for await(const part of req.parts()) {
-            if (ADMIN_DEBUG_LOGS) {
+            if (ADMIN_DEBUG_LOGS()) {
                 console.log("part:", {
                     type: part.type,
                     fieldname: part.fieldname,
@@ -28,7 +28,7 @@ export async function registerChunkUpload(
             }
 
             if (part.type === "file") {
-                if (ADMIN_DEBUG_LOGS) console.log("writing chunk", chunkIndex);
+                if (ADMIN_DEBUG_LOGS()) console.log("writing chunk", chunkIndex);
 
                 await uploadManager.writeChunk(
                     uploadId,
@@ -36,7 +36,7 @@ export async function registerChunkUpload(
                     part.file
                 );
 
-                if (ADMIN_DEBUG_LOGS) console.log("chunk written");
+                if (ADMIN_DEBUG_LOGS()) console.log("chunk written");
 
                 return { ok: true};
             }

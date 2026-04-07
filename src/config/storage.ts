@@ -1,6 +1,6 @@
 import path from "path";
 
-const BASE_DIR = process.env.HOME_SERVER_BASE_DIR || "D:\\server-storage";
+const BASE_DIR = process.env.BASE_DIR || "D:\\server-storage";
 
 export const STORAGE_CONFIG = {
     baseDir: BASE_DIR,

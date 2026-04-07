@@ -14,10 +14,13 @@ export async function registerInitUpload(
     app: FastifyInstance,
     uploadManager: UploadManager
 ) {
-    app.post("/api/v1/uploads/init", async (req) => {
-        const body = InitSchema.parse(req.body);
+    app.post("/api/v1/uploads/init", async (req, reply) => {
+        const body   = InitSchema.parse(req.body);
+        const userId = (req as any).user?.userId as string | undefined;
 
-        const session = await uploadManager.initUpload(body);
+        if (!userId) return reply.code(401).send({ error: "UNAUTHORIZED" });
+
+        const session = await uploadManager.initUpload({ ...body, userId });
 
         const missingChunks: number[] = [];
 

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; connect-src http://localhost:* http://127.0.0.1:*; style-src 'self' 'unsafe-inline';">
+  <title>Home Server Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ════════════════════ LOGIN ════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <path d="M8 21h8M12 17v4"/>
+      </svg>
+      <h1>Home Server<span class="version">admin</span></h1>
+    </div>
+
+    <div class="form-group">
+      <label>Server URL</label>
+      <input id="login-url" type="text" value="http://localhost:3000" placeholder="http://localhost:3000">
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input id="login-username" type="text" placeholder="admin" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <button class="btn-primary" id="login-btn">Sign In</button>
+    <div id="login-error" class="login-error hidden"></div>
+  </div>
+</div>
+
+<!-- ════════════════════ DASHBOARD ════════════════════ -->
+<div id="dashboard" class="hidden">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="2" y="3" width="20" height="14" rx="2"/>
+        <path d="M8 21h8M12 17v4"/>
+      </svg>
+      <span class="logo-text">Home Server</span>
+    </div>
+
+    <nav>
+      <a class="nav-item active" data-tab="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Overview
+      </a>
+      <a class="nav-item" data-tab="devices">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="2" y="4" width="20" height="14" rx="2"/>
+          <path d="M6 20h12M9 16v4M15 16v4"/>
+        </svg>
+        Devices
+      </a>
+      <a class="nav-item" data-tab="files">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"/>
+        </svg>
+        Files
+      </a>
+      <a class="nav-item" data-tab="system">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        System
+      </a>
+      <a class="nav-item" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="server-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-text" id="status-text">Connecting…</span>
+      </div>
+      <button class="btn-logout" id="logout-btn">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <div class="main-area">
+    <header class="topbar">
+      <h2 id="tab-title">Overview</h2>
+      <div class="topbar-meta">
+        <span class="server-url-display" id="server-url-display"></span>
+        <span class="last-updated" id="last-updated"></span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ── Overview ── -->
+      <div id="tab-overview" class="tab-panel active">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Server</div>
+            <div class="stat-value" id="ov-status">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Uptime</div>
+            <div class="stat-value" id="ov-uptime">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Files Stored</div>
+            <div class="stat-value" id="ov-files">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Storage Used</div>
+            <div class="stat-value" id="ov-storage">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Active Uploads</div>
+            <div class="stat-value" id="ov-uploads">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Devices (7d)</div>
+            <div class="stat-value" id="ov-devices">—</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <h3>Connected Devices</h3>
+            <span class="count-badge" id="ov-device-count">0</span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:30%">Device</th>
+                <th style="width:20%">User</th>
+                <th style="width:25%">Last Seen</th>
+                <th style="width:25%">Status</th>
+              </tr>
+            </thead>
+            <tbody id="ov-devices-tbody">
+              <tr class="loading-row"><td colspan="4">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Devices ── -->
+      <div id="tab-devices" class="tab-panel">
+        <div class="section">
+          <div class="section-header">
+            <h3>All Devices</h3>
+            <span class="count-badge" id="dev-count">0</span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:24%">Device Name</th>
+                <th style="width:13%">User</th>
+                <th style="width:18%">Registered</th>
+                <th style="width:18%">Last Seen</th>
+                <th style="width:15%">Approval</th>
+                <th style="width:12%">Action</th>
+              </tr>
+            </thead>
+            <tbody id="devices-tbody">
+              <tr class="loading-row"><td colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Files ── -->
+      <div id="tab-files" class="tab-panel">
+        <div class="section">
+          <div class="section-header">
+            <h3>Stored Files</h3>
+            <span class="count-badge" id="files-count">0</span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:55%">Name</th>
+                <th style="width:20%">Size</th>
+                <th style="width:25%">Modified</th>
+              </tr>
+            </thead>
+            <tbody id="files-tbody">
+              <tr class="loading-row"><td colspan="3">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── System ── -->
+      <div id="tab-system" class="tab-panel">
+        <div class="section">
+          <div class="section-header"><h3>Server Info</h3></div>
+          <div id="system-info-rows"></div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">CPU Usage</span>
+              <span class="chart-value" id="chart-cpu-val">—</span>
+            </div>
+            <div class="chart-body">
+              <svg id="chart-cpu" class="chart-svg" preserveAspectRatio="none"></svg>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <span class="chart-title">RAM Usage</span>
+              <span class="chart-value" id="chart-mem-val">—</span>
+            </div>
+            <div class="chart-body">
+              <svg id="chart-mem" class="chart-svg" preserveAspectRatio="none"></svg>
+            </div>
+          </div>
+          <div class="chart-card chart-card-wide">
+            <div class="chart-header">
+              <span class="chart-title">Throughput</span>
+              <span class="chart-value" id="chart-net-val">—</span>
+            </div>
+            <div class="chart-body">
+              <svg id="chart-net" class="chart-svg" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item legend-up">Upload</span>
+              <span class="legend-item legend-down">Download</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header"><h3>Memory Details</h3></div>
+          <div class="mem-section">
+            <h4>RAM Usage</h4>
+            <div class="mem-bar-bg">
+              <div class="mem-bar-fill" id="os-mem-bar" style="width:0%"></div>
+            </div>
+            <div class="mem-labels">
+              <span id="os-mem-used">—</span>
+              <span id="os-mem-total">—</span>
+            </div>
+          </div>
+          <div class="mem-section storage-section">
+            <h4>Process Heap</h4>
+            <div class="mem-bar-bg">
+              <div class="mem-bar-fill" id="proc-mem-bar" style="width:0%"></div>
+            </div>
+            <div class="mem-labels">
+              <span id="proc-mem-used">—</span>
+              <span id="proc-mem-total">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header"><h3>Server Control</h3></div>
+          <div class="power-body">
+            <div class="power-desc">These actions affect the server process. Restart will attempt to relaunch automatically.</div>
+            <div class="power-actions">
+              <button class="btn-power btn-restart" id="restart-btn">Restart Server</button>
+              <button class="btn-power btn-shutdown" id="shutdown-btn">Shut Down Server</button>
+            </div>
+            <div id="power-feedback" class="power-feedback hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Settings ── -->
+      <div id="tab-settings" class="tab-panel">
+
+        <!-- Storage -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>Storage</h3>
+            <p class="settings-card-desc">Where the server reads and writes files on disk.</p>
+          </div>
+          <div class="settings-card-body">
+            <div id="storage-restart-banner" class="banner-warning hidden">
+              &#9888; Restart the server for the new path to take effect.
+            </div>
+            <div class="settings-field">
+              <label>Active Path</label>
+              <input type="text" id="setting-active-path" readonly>
+              <span class="field-hint">The path the server is currently using (runtime).</span>
+            </div>
+            <div class="settings-field">
+              <label>Configured Path</label>
+              <input type="text" id="setting-storage-path" placeholder="D:\server-storage">
+              <span class="field-hint">Written to .env — takes effect on next server restart.</span>
+            </div>
+            <div class="settings-actions">
+              <button class="btn-save" id="save-storage-btn">Save Storage Path</button>
+              <span class="save-feedback hidden" id="storage-feedback"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>Admin Account</h3>
+            <p class="settings-card-desc">Change your login username and password.</p>
+          </div>
+          <div class="settings-card-body">
+            <div class="settings-field">
+              <label>Username</label>
+              <input type="text" id="setting-username" autocomplete="username">
+            </div>
+            <div class="settings-field">
+              <label>New Password</label>
+              <input type="password" id="setting-new-password" autocomplete="new-password" placeholder="Leave blank to keep current">
+            </div>
+            <div class="settings-field">
+              <label>Confirm New Password</label>
+              <input type="password" id="setting-confirm-password" autocomplete="new-password">
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-field">
+              <label>Current Password <span class="required">required to save</span></label>
+              <input type="password" id="setting-current-password" autocomplete="current-password" placeholder="Enter your current password">
+            </div>
+            <div class="settings-actions">
+              <button class="btn-save" id="save-account-btn">Update Account</button>
+              <span class="save-feedback hidden" id="account-feedback"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Server options -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>Server Options</h3>
+            <p class="settings-card-desc">Token lifetime and logging verbosity.</p>
+          </div>
+          <div class="settings-card-body">
+            <div id="options-restart-banner" class="banner-warning hidden">
+              &#9888; Restart the server for the token expiration change to take effect.
+            </div>
+            <div class="settings-field">
+              <label>Token Expiration</label>
+              <input type="text" id="setting-jwt-exp" placeholder="7d">
+              <span class="field-hint">How long login tokens stay valid. Examples: 7d, 24h, 30d.</span>
+            </div>
+            <div class="settings-field">
+              <label>Debug Logs</label>
+              <div class="toggle-row">
+                <label class="toggle">
+                  <input type="checkbox" id="setting-debug-logs">
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-label">Enable verbose error output (takes effect immediately)</span>
+              </div>
+            </div>
+            <div class="settings-actions">
+              <button class="btn-save" id="save-options-btn">Save Options</button>
+              <span class="save-feedback hidden" id="options-feedback"></span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /#tab-settings -->
+
+    </div><!-- /.content -->
+  </div><!-- /.main-area -->
+</div><!-- /#dashboard -->
+
+<script src="app.js"></script>
+</body>
+</html>

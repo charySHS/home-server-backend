@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(BASE_DIR=./storage JWT_EXPIRATION=7d ADMIN_DEBUG_LOGS=false node dist/index.js)",
+      "Bash(echo \"Server PID: $!\")",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(curl:*)",
+      "Bash(npm install:*)",
+      "Bash(ls node_modules/.bin/electron*)",
+      "Bash(npm start:*)",
+      "Bash(echo \"Dashboard PID: $!\")",
+      "Bash(taskkill //F //PID 20316)",
+      "Bash(echo \"New PID: $!\")",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(xargs -r -I{} taskkill //F //PID {})",
+      "Bash(grep -v \"^$\")",
+      "Bash(cat src/domain/upload/*.ts)",
+      "Read(//mnt/c/dev/**)",
+      "Bash(grep:*)"
+    ]
+  }
+}

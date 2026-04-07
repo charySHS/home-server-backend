@@ -6,6 +6,7 @@ export interface UploadSession {
     // Identifiers
     uploadId: string;
     fileId: string;
+    userId: string;
 
     // File Metadata
     fileName: string;

@@ -68,13 +68,14 @@ export class UploadDiskStore {
      */
     async writeMeta(session: UploadSession): Promise<void> {
         const meta = {
-            uploadId: session.uploadId,
-            fileId: session.fileId,
-            fileName: session.fileName,
-            fileSize: session.fileSize,
-            chunkSize: session.chunkSize,
+            uploadId:   session.uploadId,
+            fileId:     session.fileId,
+            userId:     session.userId,
+            fileName:   session.fileName,
+            fileSize:   session.fileSize,
+            chunkSize:  session.chunkSize,
             totalChunks: session.totalChunks,
-            createdAt: session.createdAt,
+            createdAt:  session.createdAt,
         };
 
         await fs.writeFile(

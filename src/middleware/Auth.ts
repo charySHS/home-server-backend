@@ -18,13 +18,15 @@ export async function authMiddleware(
         const token = header.split(" ")[1];
         const payload = jwt.verify(token, getServerSecret()) as any;
 
-        const device = db
-            .prepare("SELECT * FROM devices WHERE id = ? AND approved = 1")
-            .get(payload.deviceId);
+        if (payload.role !== "dashboard") {
+            const device = db
+                .prepare("SELECT * FROM devices WHERE id = ? AND approved = 1")
+                .get(payload.deviceId);
 
-        if (!device) {
-            reply.code(403).send({ error: "DEVICE_NOT_APPROVED" });
-            return reply;
+            if (!device) {
+                reply.code(403).send({ error: "DEVICE_NOT_APPROVED" });
+                return reply;
+            }
         }
 
         (req as any).user = payload;

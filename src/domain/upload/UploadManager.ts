@@ -10,6 +10,7 @@ import {randomUUID} from "node:crypto";
 
 import {STORAGE_CONFIG} from "../../config/storage.js";
 import { AsyncMutex } from "../../utils/AsyncMutex.js";
+import { statsCollector } from "../../stats/StatsCollector.js";
 
 export interface UploadInitRequest {
     fileId: string;
@@ -17,6 +18,7 @@ export interface UploadInitRequest {
     fileSize: number;
     chunkSize: number;
     totalChunks: number;
+    userId: string;
 }
 
 export interface UploadStatus {
@@ -34,12 +36,9 @@ export class UploadManager {
 
     /**
      * Initialize or resume an upload session.
-     * Alpha logic:
-     * - Always create new session
-     * - TODO: Add resume logic
      */
     async initUpload(request: UploadInitRequest): Promise<UploadSession> {
-        // 1. Scan existing uploads
+        // 1. Scan existing uploads for a resumable match
         const uploadIds = await this.disk.listUploads();
 
         for (const uploadId of uploadIds) {
@@ -51,17 +50,19 @@ export class UploadManager {
 
                 const meta = JSON.parse(metaRaw) as {
                     fileId: string;
+                    userId: string;
                     fileSize: number;
                     chunkSize: number;
                     totalChunks: number;
                     fileName: string;
                 };
 
-                // 2. Check resume compatability
+                // 2. Check resume compatibility — must match userId too
                 const isSameFile =
-                    meta.fileId === request.fileId &&
-                    meta.fileSize === request.fileSize &&
-                    meta.chunkSize === request.chunkSize &&
+                    meta.userId      === request.userId &&
+                    meta.fileId      === request.fileId &&
+                    meta.fileSize    === request.fileSize &&
+                    meta.chunkSize   === request.chunkSize &&
                     meta.totalChunks === request.totalChunks;
 
                 if (!isSameFile) continue;
@@ -75,41 +76,43 @@ export class UploadManager {
                 // 4. Resume existing session
                 return {
                     uploadId,
-                    fileId: meta.fileId,
-                    fileName: meta.fileName,
-                    fileSize: meta.fileSize,
-                    chunkSize: meta.chunkSize,
-                    totalChunks: meta.totalChunks,
-                    state: state.state,
+                    fileId:        meta.fileId,
+                    userId:        meta.userId,
+                    fileName:      meta.fileName,
+                    fileSize:      meta.fileSize,
+                    chunkSize:     meta.chunkSize,
+                    totalChunks:   meta.totalChunks,
+                    state:         state.state,
                     receivedChunks: state.receivedChunks,
-                    createdAt: Date.now(),
-                    lastActivity: state.lastActivity,
+                    createdAt:     Date.now(),
+                    lastActivity:  state.lastActivity,
                 };
-            } catch { continue; } // TODO: Treat corrupted uploads
+            } catch { continue; }
         }
 
-        // 5. No resume found -> create new upload
+        // 5. No resume found — create new upload
         const uploadId = randomUUID();
 
         const session: UploadSession = {
             uploadId,
-            fileId: request.fileId,
-            fileName: request.fileName,
-            fileSize: request.fileSize,
-            chunkSize: request.chunkSize,
-            totalChunks: request.totalChunks,
-            state: UploadState.UPLOADING,
+            fileId:        request.fileId,
+            userId:        request.userId,
+            fileName:      request.fileName,
+            fileSize:      request.fileSize,
+            chunkSize:     request.chunkSize,
+            totalChunks:   request.totalChunks,
+            state:         UploadState.UPLOADING,
             receivedChunks: new Array(request.totalChunks).fill(false),
-            createdAt: Date.now(),
-            lastActivity: Date.now(),
+            createdAt:     Date.now(),
+            lastActivity:  Date.now(),
         };
 
         await this.disk.createUploadDirs(uploadId);
         await this.disk.writeMeta(session);
         await this.disk.writeState(uploadId, {
-            state: session.state,
+            state:          session.state,
             receivedChunks: session.receivedChunks,
-            lastActivity: session.lastActivity
+            lastActivity:   session.lastActivity,
         });
 
         return session;
@@ -117,45 +120,34 @@ export class UploadManager {
 
     /**
      * Write single chunk to disk.
-     * Alpha logic:
-     * - Sequential writes
-     * - No parallel enforcement
      */
     async writeChunk(uploadId: string, chunkIndex: number, dataStream: NodeJS.ReadableStream): Promise<void> {
         const lock = this.getLock(uploadId);
 
         await lock.runExclusive(async () => {
-            // 1. Validate upload exists
             if (!(await this.disk.exists(uploadId))) { throw new Error("UPLOAD_NOT_FOUND"); }
 
-            // 2. Load authoritative state
             const state = await this.disk.readState(uploadId);
 
-            // 3. Validate chunk index
             if (chunkIndex < 0 || chunkIndex >= state.receivedChunks.length) { throw new Error("INVALID_CHUNK_INDEX"); }
 
-            // 4. Idempotency check (already received)
-            if (state.receivedChunks[chunkIndex]) { return; } // Chunk already safely written - ignore duplicates
+            if (state.receivedChunks[chunkIndex]) { return; }
 
             const chunksDir = this.disk.getChunksDir(uploadId);
             const finalPath = path.join(chunksDir, `${chunkIndex}.chunk`);
-            const tempPath = `${finalPath}.tmp`;
+            const tempPath  = `${finalPath}.tmp`;
 
-            // 5. Write chunk atomically
             const writeStream = (await import("fs")).createWriteStream(tempPath);
 
             await new Promise<void>((resolve, reject) => {
                 dataStream.pipe(writeStream);
-
                 dataStream.on("error", reject);
                 writeStream.on("error", reject);
                 writeStream.on("finish", resolve);
             });
 
-            // 6. Atomic rename (guarantees full write)
             await fs.rename(tempPath, finalPath);
 
-            // 7. Update state
             state.receivedChunks[chunkIndex] = true;
             state.lastActivity = Date.now();
 
@@ -172,42 +164,32 @@ export class UploadManager {
         const state = await this.disk.readState(uploadId);
 
         const received: number[] = [];
-        const missing: number[] = [];
+        const missing:  number[] = [];
 
         state.receivedChunks.forEach((ok, index) => {
             if (ok) received.push(index);
-            else missing.push(index);
+            else    missing.push(index);
         });
 
-        return {
-            uploadId,
-            state: state.state,
-            receivedChunks: received,
-            missingChunks: missing,
-        };
+        return { uploadId, state: state.state, receivedChunks: received, missingChunks: missing };
     }
 
     /**
-     * Finalize upload once all chunks are present.
+     * Finalize upload: assemble chunks and place file in the user's folder.
      */
     async finalize(uploadId: string): Promise<void> {
         const lock = this.getLock(uploadId);
 
         await lock.runExclusive(async () => {
-            // 1. Validate upload exists
             if (!(await this.disk.exists(uploadId))) { throw new Error("UPLOAD_NOT_FOUND"); }
 
-            // 2. Load authoritative state
             const state = await this.disk.readState(uploadId);
 
-            // 3. Ensure upload is not already completed
-            if (state.state === UploadState.COMPLETED) { return; } // Idempotent finish
+            if (state.state === UploadState.COMPLETED) { return; }
 
-            // 4. Ensure all chunks are present
             const missing = state.receivedChunks.some(ok => !ok);
             if (missing) { throw new Error("UPLOAD_INCOMPLETE"); }
 
-            // 5. Mark Finalizing
             state.state = UploadState.FINALIZING;
             state.lastActivity = Date.now();
             await this.disk.writeState(uploadId, state);
@@ -215,71 +197,67 @@ export class UploadManager {
             const uploadDir = this.disk.getUploadDir(uploadId);
             const chunksDir = this.disk.getChunksDir(uploadId);
 
-            const metaRaw = await fs.readFile(
-                path.join(uploadDir, "meta.json"),
-                "utf-8"
-            );
+            const metaRaw = await fs.readFile(path.join(uploadDir, "meta.json"), "utf-8");
 
             const meta = JSON.parse(metaRaw) as {
-                fileName: string;
-                fileSize: number;
+                userId:      string;
+                fileName:    string;
+                fileSize:    number;
                 totalChunks: number;
             };
 
-            const finalTempPath = path.join(STORAGE_CONFIG.dataDir, `${uploadId}.tmp`);
-            const finalPath = path.join(STORAGE_CONFIG.dataDir, meta.fileName);
+            // Files live in dataDir/{userId}/{fileName}
+            // fileName may include subdirectory path (e.g. "photos/vacation.jpg")
+            const userDir     = path.join(STORAGE_CONFIG.dataDir, meta.userId);
+            const finalPath   = path.resolve(userDir, meta.fileName);
 
-            // 6. Switch chunks into temp file (sequentially)
-            const writeStream = (await import("fs")).createWriteStream(finalTempPath);
+            // Safety: ensure destination is within the user's folder
+            if (!finalPath.startsWith(userDir + path.sep) && finalPath !== userDir) {
+                throw new Error("INVALID_FILE_PATH");
+            }
+
+            // Create intermediate directories if needed
+            await fs.mkdir(path.dirname(finalPath), { recursive: true });
+
+            const finalTempPath = path.join(STORAGE_CONFIG.dataDir, `${uploadId}.tmp`);
+            const writeStream   = (await import("fs")).createWriteStream(finalTempPath);
 
             for (let i = 0; i < meta.totalChunks; i++) {
-                const chunkPath = path.join(chunksDir, `${i}.chunk`);
-                const data = await fs.readFile(chunkPath);
-
+                const data = await fs.readFile(path.join(chunksDir, `${i}.chunk`));
                 writeStream.write(data);
             }
 
             await new Promise<void>((resolve, reject) => {
                 writeStream.end();
-
                 writeStream.on("finish", resolve);
                 writeStream.on("error", reject);
             });
 
-            // 7. Atomic move into final location
             await fs.rename(finalTempPath, finalPath);
 
-            // 8. Verify file size integrity
             const stats = await fs.stat(finalPath);
 
             if (stats.size !== meta.fileSize) {
-                // Remove corrupted file
                 await fs.rm(finalPath, { force: true });
-
                 state.state = UploadState.FAILED;
                 state.lastActivity = Date.now();
                 await this.disk.writeState(uploadId, state);
-
                 throw new Error("FILE_SIZE_MISMATCH");
             }
 
-            if (stats.size > meta.fileSize) { throw new Error("FILE_SIZE_EXCEEDED"); }
+            // Track bytes uploaded for stats
+            statsCollector.trackUpload(meta.fileSize);
 
-            // 9. Mark COMPLETED
             state.state = UploadState.COMPLETED;
             state.lastActivity = Date.now();
-
             await this.disk.writeState(uploadId, state);
 
-            // 9. Cleanup upload directory
             await fs.rm(uploadDir, { recursive: true, force: true });
         });
     }
 
     private getLock(uploadId: string): AsyncMutex {
         if (!this.locks.has(uploadId)) { this.locks.set(uploadId, new AsyncMutex()); }
-
         return this.locks.get(uploadId)!;
     }
-
 }
