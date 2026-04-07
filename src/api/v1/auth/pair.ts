@@ -1,8 +1,12 @@
 import { FastifyInstance } from "fastify";
 import { randomUUID } from "crypto";
+import { promises as fs } from "fs";
+import path from "path";
 import jwt from "jsonwebtoken";
+import argon2 from "argon2";
 import { db } from "../../../persistence/Database.js";
 import { getServerSecret } from "../../../security/ServerIdentity.js";
+import { STORAGE_CONFIG } from "../../../config/storage.js";
 
 const PAIRING_TTL_MS  = 5 * 60 * 1000;   // codes expire after 5 minutes
 const POLL_MAX_AGE_MS = 6 * 60 * 1000;   // polling window (slightly longer)
@@ -33,13 +37,22 @@ export async function registerPairRoutes(app: FastifyInstance) {
             return reply.code(400).send({ error: "USERNAME_AND_DEVICE_NAME_REQUIRED" });
         }
 
-        const user = db
+        let user = db
             .prepare("SELECT id FROM users WHERE username = ?")
             .get(username.trim()) as { id: string } | undefined;
 
         if (!user) {
-            // Don't reveal whether the user exists — just say pending
-            // (The code will simply never be approved if the username is wrong)
+            // New username — register the user now so the admin can approve their device.
+            // A random unguessable placeholder is used for the password hash; these users
+            // authenticate exclusively via the pairing flow, not username/password login.
+            const newUserId       = randomUUID();
+            const placeholderHash = await argon2.hash(randomUUID());
+            db.prepare(`
+                INSERT INTO users (id, username, password_hash, created_at, is_admin)
+                VALUES (?, ?, ?, ?, 0)
+            `).run(newUserId, username.trim(), placeholderHash, Date.now());
+            await fs.mkdir(path.join(STORAGE_CONFIG.dataDir, newUserId), { recursive: true });
+            user = { id: newUserId };
         }
 
         const id        = randomUUID();
@@ -50,7 +63,7 @@ export async function registerPairRoutes(app: FastifyInstance) {
         db.prepare(`
             INSERT INTO pairing_requests (id, user_id, device_name, code, status, created_at, expires_at)
             VALUES (?, ?, ?, ?, 'pending', ?, ?)
-        `).run(id, user?.id ?? "", deviceName.trim(), code, now, expiresAt);
+        `).run(id, user.id, deviceName.trim(), code, now, expiresAt);
 
         return { pairingId: id, code };
     });
@@ -154,6 +167,8 @@ export async function registerPairRoutes(app: FastifyInstance) {
         db.prepare(`
             UPDATE pairing_requests SET status = 'approved', device_id = ? WHERE id = ?
         `).run(deviceId, id);
+
+        await fs.mkdir(path.join(STORAGE_CONFIG.dataDir, row.user_id), { recursive: true });
 
         return { ok: true };
     });

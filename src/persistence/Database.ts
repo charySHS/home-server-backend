@@ -32,15 +32,22 @@ export function initDatabase() {
     );
 
     CREATE TABLE IF NOT EXISTS pairing_requests (
-      id          TEXT PRIMARY KEY,
-      user_id     TEXT NOT NULL,
-      device_name TEXT NOT NULL,
-      code        TEXT NOT NULL,
-      status      TEXT NOT NULL DEFAULT 'pending',
-      device_id   TEXT,
-      created_at  INTEGER NOT NULL,
-      expires_at  INTEGER NOT NULL,
+      id                 TEXT PRIMARY KEY,
+      user_id            TEXT NOT NULL,
+      requested_username TEXT,
+      device_name        TEXT NOT NULL,
+      code               TEXT NOT NULL,
+      status             TEXT NOT NULL DEFAULT 'pending',
+      device_id          TEXT,
+      created_at         INTEGER NOT NULL,
+      expires_at         INTEGER NOT NULL,
       FOREIGN KEY(user_id) REFERENCES users(id)
     );
   `);
+
+    // Migration: add requested_username to existing tables that predate this column.
+    const cols = db.prepare("PRAGMA table_info(pairing_requests)").all() as { name: string }[];
+    if (!cols.some(c => c.name === "requested_username")) {
+        db.exec("ALTER TABLE pairing_requests ADD COLUMN requested_username TEXT");
+    }
 }

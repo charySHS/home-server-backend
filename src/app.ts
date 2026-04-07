@@ -56,6 +56,13 @@ function isPairingPublic(url: string): boolean {
 async function createApp() {
     const app = Fastify({ logger: true });
 
+    // Allow POST requests with Content-Type: application/json but no body (e.g. /auth/refresh).
+    app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => {
+        if (!body || body === "") { done(null, {}); return; }
+        try { done(null, JSON.parse(body as string)); }
+        catch (err) { (err as any).statusCode = 400; done(err as Error); }
+    });
+
     initDatabase();
     const uploadManager = new UploadManager(STORAGE_CONFIG.uploadsDir);
 
